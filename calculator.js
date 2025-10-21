@@ -141,6 +141,8 @@ function formatCurrency(amount) {
 /**
  * Handle form submission
  */
+let currentResults = []; // Store current results globally for export
+
 document.getElementById('calculatorForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -170,7 +172,8 @@ document.getElementById('calculatorForm').addEventListener('submit', function(e)
         results.push({
             monthName: formatMonth(currentYear, currentMonth),
             workingDays: workingDays,
-            lumpSum: lumpSum
+            lumpSum: lumpSum,
+            deliverables: '' // Initialize empty deliverables
         });
         
         totalWorkingDays += workingDays;
@@ -178,6 +181,7 @@ document.getElementById('calculatorForm').addEventListener('submit', function(e)
     }
     
     // Display results
+    currentResults = results; // Store results globally
     displayResults(results, totalWorkingDays, totalLumpSum);
 });
 
@@ -196,7 +200,7 @@ function displayResults(results, totalWorkingDays, totalLumpSum) {
     const breakdownContainer = document.getElementById('monthlyBreakdown');
     breakdownContainer.innerHTML = '';
     
-    results.forEach(result => {
+    results.forEach((result, index) => {
         const monthCard = document.createElement('div');
         monthCard.className = 'month-card';
         
@@ -204,9 +208,26 @@ function displayResults(results, totalWorkingDays, totalLumpSum) {
             <div class="month-name">${result.monthName}</div>
             <div class="month-days">${result.workingDays} working days</div>
             <div class="month-sum">${formatCurrency(result.lumpSum)}</div>
+            <div class="month-deliverables">
+                <input 
+                    type="text" 
+                    placeholder="Enter deliverables..." 
+                    data-month-index="${index}"
+                    value="${result.deliverables}"
+                    class="deliverables-input"
+                >
+            </div>
         `;
         
         breakdownContainer.appendChild(monthCard);
+    });
+    
+    // Add event listeners to deliverables inputs
+    document.querySelectorAll('.deliverables-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const monthIndex = parseInt(this.dataset.monthIndex);
+            currentResults[monthIndex].deliverables = this.value;
+        });
     });
     
     // Show results container
@@ -222,4 +243,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     document.getElementById('startMonth').value = `${year}-${month}`;
+    
+    // Add event listener for export button
+    document.getElementById('exportExcel').addEventListener('click', exportToExcel);
 });
+
+/**
+ * Export results to Excel (CSV format)
+ */
+function exportToExcel() {
+    if (!currentResults || currentResults.length === 0) {
+        alert('No results to export. Please calculate first.');
+        return;
+    }
+    
+    // Prepare CSV data
+    let csvContent = 'Month,Working Days,Lump Sum (CHF),Deliverables\n';
+    
+    let totalWorkingDays = 0;
+    let totalLumpSum = 0;
+    
+    currentResults.forEach(result => {
+        const deliverables = (result.deliverables || '').replace(/,/g, ';'); // Replace commas to avoid CSV issues
+        csvContent += `"${result.monthName}",${result.workingDays},${result.lumpSum.toFixed(2)},"${deliverables}"\n`;
+        totalWorkingDays += result.workingDays;
+        totalLumpSum += result.lumpSum;
+    });
+    
+    // Add totals row
+    csvContent += `"TOTAL",${totalWorkingDays},${totalLumpSum.toFixed(2)},""\n`;
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Generate filename with current date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const filename = `lumpsum-calculation-${dateStr}.csv`;
+    
+    // Create download link
+    if (navigator.msSaveBlob) { // IE 10+
+        navigator.msSaveBlob(blob, filename);
+    } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
