@@ -105,6 +105,30 @@ header h1 {
     transform: translateY(0);
 }
 
+.btn-export {
+    width: 100%;
+    padding: 1rem;
+    background: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1.5rem;
+}
+
+.btn-export:hover {
+    background: #059669;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-export:active {
+    transform: translateY(0);
+}
+
 .results-container {
     background: var(--card-background);
     border-radius: 12px;
@@ -156,7 +180,7 @@ header h1 {
     border: 2px solid var(--border-color);
     border-radius: 8px;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr 2fr;
     gap: 1rem;
     align-items: center;
     transition: all 0.3s ease;
@@ -185,6 +209,26 @@ header h1 {
     color: var(--success-color);
 }
 
+.month-deliverables {
+    display: flex;
+    align-items: center;
+}
+
+.month-deliverables input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.month-deliverables input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
 @media (max-width: 640px) {
     header h1 {
         font-size: 2rem;
@@ -202,5 +246,9 @@ header h1 {
 
     .month-days, .month-sum {
         text-align: center;
+    }
+    
+    .month-deliverables {
+        justify-content: center;
     }
 }
