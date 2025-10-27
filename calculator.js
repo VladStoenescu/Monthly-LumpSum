@@ -167,6 +167,25 @@ function getWeekOfMonth(date) {
 }
 
 /**
+ * Get ISO week number of the year for a given date
+ * @param {Date} date - The date
+ * @returns {number} - ISO week number (1-53)
+ */
+function getISOWeekNumber(date) {
+    // Create a copy of the date to avoid modifying the original
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // Set to nearest Thursday: current date + 4 - current day number
+    // Make Sunday's day number 7
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    // Get first day of year
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Calculate full weeks to nearest Thursday
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
+}
+
+/**
  * Generate work plan breakdown for results
  * @param {Array} results - Monthly calculation results
  */
@@ -205,17 +224,22 @@ function displayWorkPlanBreakdown(results) {
         const monthDate = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth(), 1);
         const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
         
-        // Calculate approximate number of weeks in this month
-        const weeksInMonth = Math.ceil(lastDay.getDate() / 7);
+        // Get all unique ISO week numbers for this month
+        const weekNumbers = new Set();
+        const currentDate = new Date(monthDate);
+        while (currentDate <= lastDay) {
+            const weekNum = getISOWeekNumber(currentDate);
+            weekNumbers.add(weekNum);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
         
-        // Create rows for each week in the month
-        for (let week = 1; week <= weeksInMonth; week++) {
+        // Convert to sorted array
+        const sortedWeeks = Array.from(weekNumbers).sort((a, b) => a - b);
+        
+        // Create rows for each week
+        sortedWeeks.forEach((weekNum, index) => {
             const weekRow = document.createElement('tr');
-            
-            // Calculate approximate week dates
-            const weekStartDay = (week - 1) * 7 + 1;
-            const weekEndDay = Math.min(week * 7, lastDay.getDate());
-            const weekLabel = `Week ${weekStartDay}-${weekEndDay}`;
+            const weekLabel = `Week ${weekNum}`;
             
             weekRow.innerHTML = `
                 <td>${weekLabel}</td>
@@ -223,7 +247,7 @@ function displayWorkPlanBreakdown(results) {
                     <textarea 
                         placeholder="Enter supplier activities..."
                         data-milestone="${milestoneIndex}"
-                        data-week="${week}"
+                        data-week="${weekNum}"
                         data-type="supplier"
                         class="work-plan-input"
                     ></textarea>
@@ -232,7 +256,7 @@ function displayWorkPlanBreakdown(results) {
                     <textarea 
                         placeholder="Enter client obligations..."
                         data-milestone="${milestoneIndex}"
-                        data-week="${week}"
+                        data-week="${weekNum}"
                         data-type="client"
                         class="work-plan-input"
                     ></textarea>
@@ -240,7 +264,7 @@ function displayWorkPlanBreakdown(results) {
             `;
             
             tbody.appendChild(weekRow);
-        }
+        });
     });
     
     table.appendChild(tbody);
@@ -437,23 +461,33 @@ function exportToExcel() {
         // Add milestone header
         csvContent += `"Milestone ${milestoneIndex + 1} - ${result.monthName}","","",""\n`;
         
-        // Get the last day of month to determine weeks
+        // Get the date range for this month
+        const monthDate = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth(), 1);
         const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
-        const weeksInMonth = Math.ceil(lastDay.getDate() / 7);
+        
+        // Get all unique ISO week numbers for this month
+        const weekNumbers = new Set();
+        const currentDate = new Date(monthDate);
+        while (currentDate <= lastDay) {
+            const weekNum = getISOWeekNumber(currentDate);
+            weekNumbers.add(weekNum);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Convert to sorted array
+        const sortedWeeks = Array.from(weekNumbers).sort((a, b) => a - b);
         
         // Export each week's data
-        for (let week = 1; week <= weeksInMonth; week++) {
-            const weekStartDay = (week - 1) * 7 + 1;
-            const weekEndDay = Math.min(week * 7, lastDay.getDate());
-            const weekLabel = `Week ${weekStartDay}-${weekEndDay}`;
+        sortedWeeks.forEach(weekNum => {
+            const weekLabel = `Week ${weekNum}`;
             
             const workPlan = result.workPlan || {};
-            const weekData = workPlan[week] || {};
+            const weekData = workPlan[weekNum] || {};
             const supplierActivities = (weekData.supplier || '').replace(/,/g, ';').replace(/\n/g, ' ');
             const clientObligations = (weekData.client || '').replace(/,/g, ';').replace(/\n/g, ' ');
             
             csvContent += `"","${weekLabel}","${supplierActivities}","${clientObligations}"\n`;
-        }
+        });
     });
     
     // Create blob and download
