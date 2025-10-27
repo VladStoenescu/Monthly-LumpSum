@@ -180,7 +180,7 @@ header h1 {
     border: 2px solid var(--border-color);
     border-radius: 8px;
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 2fr;
+    grid-template-columns: 2fr 1.5fr 1fr 1fr 2fr;
     gap: 1rem;
     align-items: center;
     transition: all 0.3s ease;
@@ -195,6 +195,13 @@ header h1 {
     font-weight: 600;
     font-size: 1.1rem;
     color: var(--text-primary);
+}
+
+.month-milestone {
+    text-align: center;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.95rem;
 }
 
 .month-days {
