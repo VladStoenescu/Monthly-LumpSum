@@ -119,6 +119,29 @@ function getWorkingDaysInMonth(year, month) {
 }
 
 /**
+ * Get the last working day of a specific month
+ * @param {number} year - The year
+ * @param {number} month - The month (0-11)
+ * @returns {Date} - Last working day of the month
+ */
+function getLastWorkingDayOfMonth(year, month) {
+    const holidays = getSwissHolidays(year);
+    const lastDay = new Date(year, month + 1, 0);
+    const currentDate = new Date(lastDay);
+    
+    // Start from the last day of the month and go backwards
+    while (currentDate.getMonth() === month) {
+        if (!isWeekend(currentDate) && !isHoliday(currentDate, holidays)) {
+            return new Date(currentDate);
+        }
+        currentDate.setDate(currentDate.getDate() - 1);
+    }
+    
+    // Fallback (should never reach here)
+    return lastDay;
+}
+
+/**
  * Format month name
  * @param {number} year - The year
  * @param {number} month - The month (0-11)
@@ -127,6 +150,18 @@ function getWorkingDaysInMonth(year, month) {
 function formatMonth(year, month) {
     const date = new Date(year, month, 1);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+}
+
+/**
+ * Format date
+ * @param {Date} date - The date
+ * @returns {string} - Formatted date string (DD.MM.YYYY)
+ */
+function formatDate(date) {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
 }
 
 /**
@@ -168,11 +203,13 @@ document.getElementById('calculatorForm').addEventListener('submit', function(e)
         
         const workingDays = getWorkingDaysInMonth(currentYear, currentMonth);
         const lumpSum = workingDays * rate;
+        const milestoneDate = getLastWorkingDayOfMonth(currentYear, currentMonth);
         
         results.push({
             monthName: formatMonth(currentYear, currentMonth),
             workingDays: workingDays,
             lumpSum: lumpSum,
+            milestoneDate: milestoneDate,
             deliverables: '' // Initialize empty deliverables
         });
         
@@ -206,6 +243,7 @@ function displayResults(results, totalWorkingDays, totalLumpSum) {
         
         monthCard.innerHTML = `
             <div class="month-name">${result.monthName}</div>
+            <div class="month-milestone">${formatDate(result.milestoneDate)}</div>
             <div class="month-days">${result.workingDays} working days</div>
             <div class="month-sum">${formatCurrency(result.lumpSum)}</div>
             <div class="month-deliverables">
@@ -258,20 +296,21 @@ function exportToExcel() {
     }
     
     // Prepare CSV data
-    let csvContent = 'Month,Working Days,Lump Sum (CHF),Deliverables\n';
+    let csvContent = 'Month,Milestone,Working Days,Lump Sum (CHF),Deliverables\n';
     
     let totalWorkingDays = 0;
     let totalLumpSum = 0;
     
     currentResults.forEach(result => {
         const deliverables = (result.deliverables || '').replace(/,/g, ';'); // Replace commas to avoid CSV issues
-        csvContent += `"${result.monthName}",${result.workingDays},${result.lumpSum.toFixed(2)},"${deliverables}"\n`;
+        const milestone = formatDate(result.milestoneDate);
+        csvContent += `"${result.monthName}","${milestone}",${result.workingDays},${result.lumpSum.toFixed(2)},"${deliverables}"\n`;
         totalWorkingDays += result.workingDays;
         totalLumpSum += result.lumpSum;
     });
     
     // Add totals row
-    csvContent += `"TOTAL",${totalWorkingDays},${totalLumpSum.toFixed(2)},""\n`;
+    csvContent += `"TOTAL","",${totalWorkingDays},${totalLumpSum.toFixed(2)},""\n`;
     
     // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
