@@ -192,24 +192,29 @@ function getISOWeekNumber(date) {
  * @returns {number[]} - Sorted array of ISO week numbers
  */
 function getMonthWeekNumbers(monthDate, lastDay) {
-    const firstWeek = getISOWeekNumber(monthDate);
-    const lastWeek = getISOWeekNumber(lastDay);
+    const weekNumbers = new Set();
+    const currentDate = new Date(monthDate);
     
-    const weeks = [];
-    // Handle year boundary case where week numbers might wrap around
-    if (lastWeek >= firstWeek) {
-        for (let week = firstWeek; week <= lastWeek; week++) {
-            weeks.push(week);
-        }
-    } else {
-        // Year boundary case: last week of old year + first weeks of new year
-        for (let week = firstWeek; week <= 53; week++) {
-            weeks.push(week);
-        }
-        for (let week = 1; week <= lastWeek; week++) {
-            weeks.push(week);
-        }
+    // Iterate through the month, checking every 7 days to find all unique weeks
+    // This is more efficient than checking every day
+    while (currentDate <= lastDay) {
+        weekNumbers.add(getISOWeekNumber(currentDate));
+        currentDate.setDate(currentDate.getDate() + 7);
     }
+    
+    // Check the last day to ensure we don't miss the final week
+    weekNumbers.add(getISOWeekNumber(lastDay));
+    
+    // Convert to sorted array
+    // Handle year boundary by sorting numerically but keeping natural order
+    const weeks = Array.from(weekNumbers).sort((a, b) => {
+        const firstWeek = getISOWeekNumber(monthDate);
+        // If weeks wrap around year boundary (e.g., 52, 53, 1, 2)
+        // keep them in chronological order for the month
+        if (b < firstWeek && a >= firstWeek) return -1;
+        if (a < firstWeek && b >= firstWeek) return 1;
+        return a - b;
+    });
     
     return weeks;
 }
