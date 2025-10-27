@@ -40,9 +40,8 @@ Weekend days (Saturday and Sunday) are also excluded from the working days calcu
 The tool will display:
 - Total working days across all months
 - Total lump sum amount
-- Month-by-month breakdown showing working days and lump sum for each month
-- Work plan breakdown showing weekly activities for each milestone
-- Editable fields for deliverables and work plan activities (Supplier Activities and Client Obligations)
+- Month-by-month breakdown showing working days, lump sum, and deliverables for each month
+- Work plan breakdown showing weekly supplier activities and client obligations for each milestone
 
 ## Technical Details
 
@@ -80,7 +79,7 @@ Or just double-click `index.html` to open it directly in your browser.
 
 The calculator will show working days for each month (typically 20-23 days) and calculate the monthly lump sum accordingly.
 
-### Work Plan Breakdown
+## Work Plan Breakdown
 
 For each milestone (month), you can:
 - Add detailed supplier activities and client obligations for each week
