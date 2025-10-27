@@ -130,14 +130,17 @@ function getLastWorkingDayOfMonth(year, month) {
     const currentDate = new Date(lastDay);
     
     // Start from the last day of the month and go backwards
-    while (currentDate.getMonth() === month) {
+    // Safety check: stop if we go back more than 31 days
+    let daysChecked = 0;
+    while (currentDate.getMonth() === month && daysChecked < 31) {
         if (!isWeekend(currentDate) && !isHoliday(currentDate, holidays)) {
             return new Date(currentDate);
         }
         currentDate.setDate(currentDate.getDate() - 1);
+        daysChecked++;
     }
     
-    // Fallback (should never reach here)
+    // Fallback: return last day of month (should never reach here in practice)
     return lastDay;
 }
 
