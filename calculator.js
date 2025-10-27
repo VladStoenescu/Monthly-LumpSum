@@ -156,6 +156,115 @@ function formatMonth(year, month) {
 }
 
 /**
+ * Get week number in month for a given date
+ * @param {Date} date - The date
+ * @returns {number} - Week number in month (1-based)
+ */
+function getWeekOfMonth(date) {
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const dayOfMonth = date.getDate();
+    return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
+}
+
+/**
+ * Generate work plan breakdown for results
+ * @param {Array} results - Monthly calculation results
+ */
+function displayWorkPlanBreakdown(results) {
+    const workPlanContainer = document.getElementById('workPlanBreakdown');
+    workPlanContainer.innerHTML = '';
+    
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'work-plan-table';
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    thead.innerHTML = `
+        <tr>
+            <th style="width: 15%;">Week</th>
+            <th style="width: 42.5%;">Supplier Activities</th>
+            <th style="width: 42.5%;">Client Obligations</th>
+        </tr>
+    `;
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    results.forEach((result, milestoneIndex) => {
+        // Add milestone header row
+        const milestoneRow = document.createElement('tr');
+        milestoneRow.className = 'milestone-row';
+        milestoneRow.innerHTML = `
+            <td colspan="3"><strong>Milestone ${milestoneIndex + 1} - ${result.monthName}</strong></td>
+        `;
+        tbody.appendChild(milestoneRow);
+        
+        // Get the date range for this month
+        const monthDate = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth(), 1);
+        const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
+        
+        // Calculate approximate number of weeks in this month
+        const weeksInMonth = Math.ceil(lastDay.getDate() / 7);
+        
+        // Create rows for each week in the month
+        for (let week = 1; week <= weeksInMonth; week++) {
+            const weekRow = document.createElement('tr');
+            
+            // Calculate approximate week dates
+            const weekStartDay = (week - 1) * 7 + 1;
+            const weekEndDay = Math.min(week * 7, lastDay.getDate());
+            const weekLabel = `Week ${weekStartDay}-${weekEndDay}`;
+            
+            weekRow.innerHTML = `
+                <td>${weekLabel}</td>
+                <td>
+                    <textarea 
+                        placeholder="Enter supplier activities..."
+                        data-milestone="${milestoneIndex}"
+                        data-week="${week}"
+                        data-type="supplier"
+                        class="work-plan-input"
+                    ></textarea>
+                </td>
+                <td>
+                    <textarea 
+                        placeholder="Enter client obligations..."
+                        data-milestone="${milestoneIndex}"
+                        data-week="${week}"
+                        data-type="client"
+                        class="work-plan-input"
+                    ></textarea>
+                </td>
+            `;
+            
+            tbody.appendChild(weekRow);
+        }
+    });
+    
+    table.appendChild(tbody);
+    workPlanContainer.appendChild(table);
+    
+    // Add event listeners to work plan inputs
+    document.querySelectorAll('.work-plan-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const milestoneIndex = parseInt(this.dataset.milestone);
+            const week = parseInt(this.dataset.week);
+            const type = this.dataset.type;
+            
+            if (!currentResults[milestoneIndex].workPlan) {
+                currentResults[milestoneIndex].workPlan = {};
+            }
+            if (!currentResults[milestoneIndex].workPlan[week]) {
+                currentResults[milestoneIndex].workPlan[week] = {};
+            }
+            currentResults[milestoneIndex].workPlan[week][type] = this.value;
+        });
+    });
+}
+
+/**
  * Format date
  * @param {Date} date - The date
  * @returns {string} - Formatted date string (DD.MM.YYYY)
@@ -213,7 +322,8 @@ document.getElementById('calculatorForm').addEventListener('submit', function(e)
             workingDays: workingDays,
             lumpSum: lumpSum,
             milestoneDate: milestoneDate,
-            deliverables: '' // Initialize empty deliverables
+            deliverables: '', // Initialize empty deliverables
+            workPlan: {} // Initialize empty work plan
         });
         
         totalWorkingDays += workingDays;
@@ -271,6 +381,9 @@ function displayResults(results, totalWorkingDays, totalLumpSum) {
         });
     });
     
+    // Generate and display work plan breakdown
+    displayWorkPlanBreakdown(results);
+    
     // Show results container
     document.getElementById('results').style.display = 'block';
     
@@ -298,8 +411,9 @@ function exportToExcel() {
         return;
     }
     
-    // Prepare CSV data
-    let csvContent = 'Month,Milestone,Working Days,Lump Sum (CHF),Deliverables\n';
+    // Prepare CSV data - Start with Monthly Breakdown
+    let csvContent = '=== MONTHLY BREAKDOWN ===\n';
+    csvContent += 'Month,Milestone,Working Days,Lump Sum (CHF),Deliverables\n';
     
     let totalWorkingDays = 0;
     let totalLumpSum = 0;
@@ -314,6 +428,33 @@ function exportToExcel() {
     
     // Add totals row
     csvContent += `"TOTAL","",${totalWorkingDays},${totalLumpSum.toFixed(2)},""\n`;
+    
+    // Add Work Plan Breakdown
+    csvContent += '\n=== WORK PLAN BREAKDOWN ===\n';
+    csvContent += 'Milestone,Week,Supplier Activities,Client Obligations\n';
+    
+    currentResults.forEach((result, milestoneIndex) => {
+        // Add milestone header
+        csvContent += `"Milestone ${milestoneIndex + 1} - ${result.monthName}","","",""\n`;
+        
+        // Get the last day of month to determine weeks
+        const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
+        const weeksInMonth = Math.ceil(lastDay.getDate() / 7);
+        
+        // Export each week's data
+        for (let week = 1; week <= weeksInMonth; week++) {
+            const weekStartDay = (week - 1) * 7 + 1;
+            const weekEndDay = Math.min(week * 7, lastDay.getDate());
+            const weekLabel = `Week ${weekStartDay}-${weekEndDay}`;
+            
+            const workPlan = result.workPlan || {};
+            const weekData = workPlan[week] || {};
+            const supplierActivities = (weekData.supplier || '').replace(/,/g, ';').replace(/\n/g, ' ');
+            const clientObligations = (weekData.client || '').replace(/,/g, ';').replace(/\n/g, ' ');
+            
+            csvContent += `"","${weekLabel}","${supplierActivities}","${clientObligations}"\n`;
+        }
+    });
     
     // Create blob and download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
