@@ -186,6 +186,35 @@ function getISOWeekNumber(date) {
 }
 
 /**
+ * Get all ISO week numbers that occur in a given month
+ * @param {Date} monthDate - First day of the month
+ * @param {Date} lastDay - Last day of the month
+ * @returns {number[]} - Sorted array of ISO week numbers
+ */
+function getMonthWeekNumbers(monthDate, lastDay) {
+    const firstWeek = getISOWeekNumber(monthDate);
+    const lastWeek = getISOWeekNumber(lastDay);
+    
+    const weeks = [];
+    // Handle year boundary case where week numbers might wrap around
+    if (lastWeek >= firstWeek) {
+        for (let week = firstWeek; week <= lastWeek; week++) {
+            weeks.push(week);
+        }
+    } else {
+        // Year boundary case: last week of old year + first weeks of new year
+        for (let week = firstWeek; week <= 53; week++) {
+            weeks.push(week);
+        }
+        for (let week = 1; week <= lastWeek; week++) {
+            weeks.push(week);
+        }
+    }
+    
+    return weeks;
+}
+
+/**
  * Generate work plan breakdown for results
  * @param {Array} results - Monthly calculation results
  */
@@ -224,17 +253,8 @@ function displayWorkPlanBreakdown(results) {
         const monthDate = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth(), 1);
         const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
         
-        // Get all unique ISO week numbers for this month
-        const weekNumbers = new Set();
-        const currentDate = new Date(monthDate);
-        while (currentDate <= lastDay) {
-            const weekNum = getISOWeekNumber(currentDate);
-            weekNumbers.add(weekNum);
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // Convert to sorted array
-        const sortedWeeks = Array.from(weekNumbers).sort((a, b) => a - b);
+        // Get all ISO week numbers for this month
+        const sortedWeeks = getMonthWeekNumbers(monthDate, lastDay);
         
         // Create rows for each week
         sortedWeeks.forEach((weekNum, index) => {
@@ -465,17 +485,8 @@ function exportToExcel() {
         const monthDate = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth(), 1);
         const lastDay = new Date(result.milestoneDate.getFullYear(), result.milestoneDate.getMonth() + 1, 0);
         
-        // Get all unique ISO week numbers for this month
-        const weekNumbers = new Set();
-        const currentDate = new Date(monthDate);
-        while (currentDate <= lastDay) {
-            const weekNum = getISOWeekNumber(currentDate);
-            weekNumbers.add(weekNum);
-            currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // Convert to sorted array
-        const sortedWeeks = Array.from(weekNumbers).sort((a, b) => a - b);
+        // Get all ISO week numbers for this month
+        const sortedWeeks = getMonthWeekNumbers(monthDate, lastDay);
         
         // Export each week's data
         sortedWeeks.forEach(weekNum => {
